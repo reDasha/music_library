@@ -1,20 +1,20 @@
 package main
 
 import (
-	"music_storage/internal/api"
-	"music_storage/internal/db"
-	"net/http"
-
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
-	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/swaggo/http-swagger"
+	"music_storage/internal/api"
+	"music_storage/internal/db"
+	"net/http"
 
 	_ "music_storage/docs"
 )
 
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
+
 	logrus.Info("Инициализация сервера")
 	err := godotenv.Load()
 	if err != nil {
