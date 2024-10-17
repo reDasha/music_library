@@ -28,12 +28,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Фильтр по названию группы",
-                        "name": "group",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Фильтр по названию песни",
                         "name": "song",
                         "in": "query"
@@ -42,6 +36,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Фильтр по id",
                         "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Фильтр по названию группы",
+                        "name": "group",
                         "in": "query"
                     },
                     {
@@ -75,10 +75,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список песен с фильтрацией и пагинацией",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Song"
-                            }
+                            "$ref": "#/definitions/models.SongResponse"
                         }
                     },
                     "400": {
@@ -122,7 +119,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Успешное добавление песни с внешними данными",
                         "schema": {
-                            "$ref": "#/definitions/models.Song"
+                            "$ref": "#/definitions/models.SongResponse"
                         }
                     },
                     "400": {
@@ -301,10 +298,6 @@ const docTemplate = `{
     "definitions": {
         "models.CreateSongRequest": {
             "type": "object",
-            "required": [
-                "group",
-                "song"
-            ],
             "properties": {
                 "group": {
                     "type": "string"
@@ -323,6 +316,17 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Group": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "models.MessageResponse": {
             "type": "object",
             "properties": {
@@ -332,6 +336,32 @@ const docTemplate = `{
             }
         },
         "models.Song": {
+            "type": "object",
+            "properties": {
+                "group": {
+                    "$ref": "#/definitions/models.Group"
+                },
+                "groupID": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "link": {
+                    "type": "string"
+                },
+                "releaseDate": {
+                    "type": "string"
+                },
+                "song": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SongResponse": {
             "type": "object",
             "properties": {
                 "group": {

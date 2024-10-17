@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // @title Songs API
@@ -23,14 +25,14 @@ import (
 // @Description Возвращает список песен с поддержкой фильтрации по полям и пагинации.
 // @Tags Песни
 // @Produce  json
-// @Param group query string false "Фильтр по названию группы"
 // @Param song query string false "Фильтр по названию песни"
 // @Param id query int false "Фильтр по id"
+// @Param group query string false "Фильтр по названию группы"
 // @Param text query string false "Фильтр по фрагменту текста песни"
 // @Param link query string false "Фильтр по ссылке"
 // @Param page query int false "Номер страницы" default(1)
 // @Param limit query int false "Количество записей на странице" default(10)
-// @Success 200 {object} []models.Song "Список песен с фильтрацией и пагинацией"
+// @Success 200 {object} models.SongResponse "Список песен с фильтрацией и пагинацией"
 // @Failure 400 {object} models.ErrorResponse "Некорректный ID"
 // @Failure 500 {object} models.ErrorResponse "Внутренняя ошибка сервера"
 // @Router /songs [get]
@@ -61,24 +63,29 @@ func GetFilteredSongs(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("Параметры пагинации - page: %d, limit: %d", page, limit)
 
 	var songs []models.Song
-	query := db.DB.Model(&models.Song{})
+	query := db.DB.Model(&models.Song{}).Joins("Group")
 	if group != "" {
-		query = query.Where(`"group" = ?`, group)
+		query = query.Joins("JOIN groups ON groups.id = songs.group_id").Where("groups.name = ?", group)
 	}
 	if song != "" {
-		query = query.Where("song = ?", song)
+		query = query.Where("songs.song = ?", song)
 	}
 	if releaseDate != "" {
-		query = query.Where("releaseDate = ?", releaseDate)
+		parsedDate, err := time.Parse("2006-02-01", releaseDate)
+		if err == nil {
+			query = query.Where("songs.release_date = ?", parsedDate)
+		} else {
+			logrus.Warnf("Некорректный формат даты: %s", releaseDate)
+		}
 	}
 	if text != "" {
-		query = query.Where("text LIKE ?", "%"+text+"%")
+		query = query.Where("songs.text LIKE ?", "%"+text+"%")
 	}
 	if link != "" {
-		query = query.Where(" link = ?", link)
+		query = query.Where("songs.link = ?", link)
 	}
 	if id != "" {
-		query = query.Where(" id = ?", id)
+		query = query.Where("songs.id = ?", id)
 	}
 
 	result := query.Limit(limit).Offset(offset).Find(&songs)
@@ -95,8 +102,31 @@ func GetFilteredSongs(w http.ResponseWriter, r *http.Request) {
 	}
 	logrus.Info("Запрос к базе данных успешно выполнен")
 
+	if len(songs) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode([]models.SongResponse{})
+		if err != nil {
+			logrus.Errorf("Ошибка при кодировании ответа: %v", err)
+			return
+		}
+		logrus.Info("Ответ успешно отправлен: пустой массив")
+		return
+	}
+
+	var responses []models.SongResponse
+	for _, song := range songs {
+		responses = append(responses, models.SongResponse{
+			Song:        song.Song,
+			ID:          song.ID,
+			Group:       song.Group.Name,
+			Link:        song.Link,
+			ReleaseDate: song.ReleaseDate.Format("2006-01-02"),
+			Text:        song.Text,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(songs)
+	err = json.NewEncoder(w).Encode(responses)
 	if err != nil {
 		logrus.Errorf("Ошибка при кодировании ответа: %v", err)
 		return
@@ -336,13 +366,53 @@ func UpdateSong(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if updateData.Group != "" {
-		song.Group = updateData.Group
+		groupName := updateData.Group
+		var group models.Group
+		if err := db.DB.Where("name = ?", groupName).First(&group).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				group = models.Group{Name: groupName}
+				if err := db.DB.Create(&group).Error; err != nil {
+					logrus.Errorf("Ошибка при создании группы: %v", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					err := json.NewEncoder(w).Encode(models.ErrorResponse{
+						Message: "Внутренняя ошибка сервера",
+					})
+					if err != nil {
+						return
+					}
+					return
+				}
+			} else {
+				logrus.Errorf("Ошибка при выполнении запроса к базе данных: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				err := json.NewEncoder(w).Encode(models.ErrorResponse{
+					Message: "Внутренняя ошибка сервера",
+				})
+				if err != nil {
+					return
+				}
+				return
+			}
+		}
+		song.GroupID = group.ID
 	}
 	if updateData.Song != "" {
 		song.Song = updateData.Song
 	}
 	if updateData.ReleaseDate != "" {
-		song.ReleaseDate = updateData.ReleaseDate
+		parsedDate, err := time.Parse("2006-01-02", updateData.ReleaseDate)
+		if err != nil {
+			logrus.Errorf("Некорректный формат даты: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			err = json.NewEncoder(w).Encode(models.ErrorResponse{
+				Message: "Некорректный формат даты, ожидается формат YYYY-MM-DD",
+			})
+			if err != nil {
+				return
+			}
+			return
+		}
+		song.ReleaseDate = parsedDate
 	}
 	if updateData.Text != "" {
 		song.Text = updateData.Text
@@ -366,8 +436,17 @@ func UpdateSong(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Infof("Данные песни с ID %d успешно обновлены", id)
 
+	response := models.SongResponse{
+		ID:          song.ID,
+		Song:        song.Song,
+		Group:       song.Group.Name,
+		Link:        song.Link,
+		ReleaseDate: song.ReleaseDate.Format("2006-01-02"),
+		Text:        song.Text,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(song)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		logrus.Errorf("Ошибка при кодировании ответа: %v", err)
 		return
@@ -382,7 +461,7 @@ func UpdateSong(w http.ResponseWriter, r *http.Request) {
 // @Accept  json
 // @Produce  json
 // @Param song body models.CreateSongRequest true "Данные песни (группа, название)"
-// @Success 200 {object} models.Song "Успешное добавление песни с внешними данными"
+// @Success 200 {object} models.SongResponse "Успешное добавление песни с внешними данными"
 // @Failure 400 {object} models.ErrorResponse "Некорректные данные запроса"
 // @Failure 500 {object} models.ErrorResponse "Внутренняя ошибка сервера при сохранении песни"
 // @Router /songs [post]
@@ -405,22 +484,66 @@ func CreateSong(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Debugf("Данные новой песни - group: %s, song: %s", newSong.Group, newSong.Song)
 
-	song := models.Song{
-		Group: newSong.Group,
-		Song:  newSong.Song,
+	var group models.Group
+	result := db.DB.Where("name = ?", newSong.Group).First(&group)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			group = models.Group{Name: newSong.Group}
+			result = db.DB.Create(&group)
+			if result.Error != nil {
+				logrus.Errorf("Ошибка при создании группы: %v", result.Error)
+				w.WriteHeader(http.StatusInternalServerError)
+				err := json.NewEncoder(w).Encode(models.ErrorResponse{
+					Message: "Ошибка при создании группы",
+				})
+				if err != nil {
+					return
+				}
+				return
+			}
+			logrus.Info("Группа успешно создана")
+		} else {
+			logrus.Errorf("Ошибка при поиске группы: %v", result.Error)
+			w.WriteHeader(http.StatusInternalServerError)
+			err := json.NewEncoder(w).Encode(models.ErrorResponse{
+				Message: "Внутренняя ошибка сервера",
+			})
+			if err != nil {
+				return
+			}
+			return
+		}
 	}
 
-	externalData := FetchExternalSongData(song.Group, song.Song)
+	song := models.Song{
+		GroupID: group.ID,
+		Song:    newSong.Song,
+	}
+
+	externalData := FetchExternalSongData(song.Group.Name, song.Song)
 	if externalData != nil {
 		logrus.Info("Получены данные из внешнего API")
-		song.ReleaseDate = externalData.ReleaseDate
+		if releaseDate, err := time.Parse("2006-01-02", externalData.ReleaseDate); err == nil {
+			song.ReleaseDate = releaseDate
+		}
+		if err != nil {
+			logrus.Errorf("Ошибка при парсинге даты: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			err := json.NewEncoder(w).Encode(models.ErrorResponse{
+				Message: "Внутренняя ошибка сервера",
+			})
+			if err != nil {
+				return
+			}
+			return
+		}
 		song.Text = externalData.Text
 		song.Link = externalData.Link
 	} else {
 		logrus.Warn("Данные из внешнего API не получены")
 	}
 
-	result := db.DB.Create(&song)
+	result = db.DB.Create(&song)
 	if result.Error != nil {
 		logrus.Errorf("Ошибка при сохранении песни в базу данных: %v", result.Error)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -435,9 +558,18 @@ func CreateSong(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Info("Песня успешно сохранена в базе данных")
 
+	response := models.SongResponse{
+		ID:          song.ID,
+		Song:        song.Song,
+		Group:       newSong.Group,
+		Link:        song.Link,
+		ReleaseDate: song.ReleaseDate.Format("2006-01-02"),
+		Text:        song.Text,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(song)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		logrus.Errorf("Ошибка при кодировании ответа: %v", err)
 		return

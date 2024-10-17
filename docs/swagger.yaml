@@ -5,14 +5,18 @@ definitions:
         type: string
       song:
         type: string
-    required:
-    - group
-    - song
     type: object
   models.ErrorResponse:
     description: Ошибка API
     properties:
       message:
+        type: string
+    type: object
+  models.Group:
+    properties:
+      id:
+        type: integer
+      name:
         type: string
     type: object
   models.MessageResponse:
@@ -21,6 +25,23 @@ definitions:
         type: string
     type: object
   models.Song:
+    properties:
+      group:
+        $ref: '#/definitions/models.Group'
+      groupID:
+        type: integer
+      id:
+        type: integer
+      link:
+        type: string
+      releaseDate:
+        type: string
+      song:
+        type: string
+      text:
+        type: string
+    type: object
+  models.SongResponse:
     properties:
       group:
         type: string
@@ -60,10 +81,6 @@ paths:
     get:
       description: Возвращает список песен с поддержкой фильтрации по полям и пагинации.
       parameters:
-      - description: Фильтр по названию группы
-        in: query
-        name: group
-        type: string
       - description: Фильтр по названию песни
         in: query
         name: song
@@ -72,6 +89,10 @@ paths:
         in: query
         name: id
         type: integer
+      - description: Фильтр по названию группы
+        in: query
+        name: group
+        type: string
       - description: Фильтр по фрагменту текста песни
         in: query
         name: text
@@ -96,9 +117,7 @@ paths:
         "200":
           description: Список песен с фильтрацией и пагинацией
           schema:
-            items:
-              $ref: '#/definitions/models.Song'
-            type: array
+            $ref: '#/definitions/models.SongResponse'
         "400":
           description: Некорректный ID
           schema:
@@ -128,7 +147,7 @@ paths:
         "200":
           description: Успешное добавление песни с внешними данными
           schema:
-            $ref: '#/definitions/models.Song'
+            $ref: '#/definitions/models.SongResponse'
         "400":
           description: Некорректные данные запроса
           schema:

@@ -32,6 +32,7 @@
     DB_USER=postgres
     DB_PASSWORD=yourpassword
     DB_NAME=music_library
+    SERVICE_ADDRESS=:8080
     ```
 
 2. Запустите сервер:

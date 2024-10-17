@@ -8,6 +8,7 @@ import (
 	"music_storage/internal/api"
 	"music_storage/internal/db"
 	"net/http"
+	"os"
 
 	_ "music_storage/docs"
 )
@@ -35,8 +36,8 @@ func main() {
 
 	logrus.Info("Маршруты API настроены")
 
-	logrus.Info("Запуск HTTP-сервера на порту 8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	logrus.Info("Запуск HTTP-сервера")
+	if err := http.ListenAndServe(os.Getenv("SERVICE_ADDRESS"), r); err != nil {
 		logrus.Fatal("Ошибка запуска HTTP-сервера:", err)
 	}
 }

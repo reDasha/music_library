@@ -9,17 +9,6 @@ type UpdateSongRequest struct {
 }
 
 type CreateSongRequest struct {
-	Group string `json:"group" binding:"required"`
-	Song  string `json:"song" binding:"required"`
-}
-
-// ErrorResponse описывает структуру ошибки для Swagger.
-// @Description Ошибка API
-type ErrorResponse struct {
-	Message string `json:"message"`
-}
-
-// MessageResponse описывает успешное сообщение для Swagger.
-type MessageResponse struct {
-	Message string `json:"message"`
+	Group string `json:"group"`
+	Song  string `json:"song"`
 }

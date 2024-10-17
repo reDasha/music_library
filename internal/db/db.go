@@ -29,7 +29,7 @@ func Connect() {
 	}
 	logrus.Info("Успешное подключение к базе данных")
 
-	err = DB.AutoMigrate(&models.Song{})
+	err = DB.AutoMigrate(&models.Group{}, &models.Song{})
 	if err != nil {
 		logrus.Fatalf("Ошибка автоматической миграции: %v", err)
 	}
