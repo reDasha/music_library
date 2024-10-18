@@ -300,12 +300,12 @@ func DeleteSong(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param        id      path      int     true   "ID песни"
-// @Param        song    body      models.UpdateSongRequest true "Обновленные данные песни (поля, которые могут быть изменены)"
-// @Success      200     {object}  models.Song "Успешное обновление песни"
+// @Param        song    body      models.UpdateSongRequest true "Поля, которые могут быть изменены (отправьте только те поля, которые требуют изменений)"
+// @Success      200     {object}  models.MessageResponse "Успешное обновление песни"
 // @Failure      400     {object}  models.ErrorResponse "Некорректные данные запроса"
 // @Failure      404     {object}  models.ErrorResponse "Песня не найдена"
 // @Failure      500     {object}  models.ErrorResponse "Внутренняя ошибка сервера"
-// @Router       /songs/{id} [put]
+// @Router       /songs/{id} [patch]
 func UpdateSong(w http.ResponseWriter, r *http.Request) {
 	logrus.Info("Начало обработки запроса на изменение данных песни")
 	vars := mux.Vars(r)
@@ -365,8 +365,8 @@ func UpdateSong(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if updateData.Group != "" {
-		groupName := updateData.Group
+	if updateData.Group != nil && *updateData.Group != "string" {
+		groupName := *updateData.Group
 		var group models.Group
 		if err := db.DB.Where("name = ?", groupName).First(&group).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -396,29 +396,33 @@ func UpdateSong(w http.ResponseWriter, r *http.Request) {
 		}
 		song.GroupID = group.ID
 	}
-	if updateData.Song != "" {
-		song.Song = updateData.Song
+	if updateData.Song != nil && *updateData.Song != "string" {
+		song.Song = *updateData.Song
 	}
-	if updateData.ReleaseDate != "" {
-		parsedDate, err := time.Parse("2006-01-02", updateData.ReleaseDate)
-		if err != nil {
-			logrus.Errorf("Некорректный формат даты: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			err = json.NewEncoder(w).Encode(models.ErrorResponse{
-				Message: "Некорректный формат даты, ожидается формат YYYY-MM-DD",
-			})
+	if updateData.ReleaseDate != nil {
+		if *updateData.ReleaseDate != "" && *updateData.ReleaseDate != "string" {
+			parsedDate, err := time.Parse("2006-01-02", *updateData.ReleaseDate)
 			if err != nil {
+				logrus.Errorf("Некорректный формат даты: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				err = json.NewEncoder(w).Encode(models.ErrorResponse{
+					Message: "Некорректный формат даты, ожидается формат YYYY-MM-DD",
+				})
+				if err != nil {
+					return
+				}
 				return
 			}
-			return
+			song.ReleaseDate = parsedDate
+		} else if *updateData.ReleaseDate == "" {
+			song.ReleaseDate = time.Time{}
 		}
-		song.ReleaseDate = parsedDate
 	}
-	if updateData.Text != "" {
-		song.Text = updateData.Text
+	if updateData.Text != nil && *updateData.Text != "string" {
+		song.Text = *updateData.Text
 	}
-	if updateData.Link != "" {
-		song.Link = updateData.Link
+	if updateData.Link != nil && *updateData.Link != "string" {
+		song.Link = *updateData.Link
 	}
 
 	result = db.DB.Save(&song)
@@ -436,17 +440,8 @@ func UpdateSong(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Infof("Данные песни с ID %d успешно обновлены", id)
 
-	response := models.SongResponse{
-		ID:          song.ID,
-		Song:        song.Song,
-		Group:       song.Group.Name,
-		Link:        song.Link,
-		ReleaseDate: song.ReleaseDate.Format("2006-01-02"),
-		Text:        song.Text,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(models.MessageResponse{Message: "Данные успешно обновлены"})
 	if err != nil {
 		logrus.Errorf("Ошибка при кодировании ответа: %v", err)
 		return

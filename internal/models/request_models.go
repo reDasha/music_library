@@ -1,11 +1,11 @@
 package models
 
 type UpdateSongRequest struct {
-	Group       string `json:"group,omitempty" example:""`
-	Song        string `json:"song,omitempty" example:""`
-	ReleaseDate string `json:"releaseDate,omitempty" example:""`
-	Text        string `json:"text,omitempty" example:""`
-	Link        string `json:"link,omitempty" example:""`
+	Group       *string `json:"group,omitempty"`
+	Song        *string `json:"song,omitempty"`
+	ReleaseDate *string `json:"releaseDate,omitempty" example:"0001-01-01"`
+	Text        *string `json:"text,omitempty"`
+	Link        *string `json:"link,omitempty"`
 }
 
 type CreateSongRequest struct {

@@ -12,33 +12,9 @@ definitions:
       message:
         type: string
     type: object
-  models.Group:
-    properties:
-      id:
-        type: integer
-      name:
-        type: string
-    type: object
   models.MessageResponse:
     properties:
       message:
-        type: string
-    type: object
-  models.Song:
-    properties:
-      group:
-        $ref: '#/definitions/models.Group'
-      groupID:
-        type: integer
-      id:
-        type: integer
-      link:
-        type: string
-      releaseDate:
-        type: string
-      song:
-        type: string
-      text:
         type: string
     type: object
   models.SongResponse:
@@ -59,19 +35,15 @@ definitions:
   models.UpdateSongRequest:
     properties:
       group:
-        example: ""
         type: string
       link:
-        example: ""
         type: string
       releaseDate:
-        example: ""
+        example: "0001-01-01"
         type: string
       song:
-        example: ""
         type: string
       text:
-        example: ""
         type: string
     type: object
 info:
@@ -188,7 +160,7 @@ paths:
       summary: Удалить песню
       tags:
       - Песни
-    put:
+    patch:
       consumes:
       - application/json
       description: Обновляет информацию о песне по её ID. Поля, которые не переданы,
@@ -199,7 +171,8 @@ paths:
         name: id
         required: true
         type: integer
-      - description: Обновленные данные песни (поля, которые могут быть изменены)
+      - description: Поля, которые могут быть изменены (отправьте только те поля,
+          которые требуют изменений)
         in: body
         name: song
         required: true
@@ -211,7 +184,7 @@ paths:
         "200":
           description: Успешное обновление песни
           schema:
-            $ref: '#/definitions/models.Song'
+            $ref: '#/definitions/models.MessageResponse'
         "400":
           description: Некорректные данные запроса
           schema:

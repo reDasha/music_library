@@ -138,18 +138,12 @@ const docTemplate = `{
             }
         },
         "/songs/{id}": {
-            "put": {
-                "description": "Обновляет информацию о песне по её ID. Поля, которые не переданы, остаются без изменений.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
+            "delete": {
+                "description": "Удаляет песню по её ID.",
                 "tags": [
                     "Песни"
                 ],
-                "summary": "Изменить данные песни",
+                "summary": "Удалить песню",
                 "parameters": [
                     {
                         "type": "integer",
@@ -157,22 +151,13 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Обновленные данные песни (поля, которые могут быть изменены)",
-                        "name": "song",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.UpdateSongRequest"
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Успешное обновление песни",
+                        "description": "Успешное удаление песни",
                         "schema": {
-                            "$ref": "#/definitions/models.Song"
+                            "$ref": "#/definitions/models.MessageResponse"
                         }
                     },
                     "400": {
@@ -195,12 +180,18 @@ const docTemplate = `{
                     }
                 }
             },
-            "delete": {
-                "description": "Удаляет песню по её ID.",
+            "patch": {
+                "description": "Обновляет информацию о песне по её ID. Поля, которые не переданы, остаются без изменений.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Песни"
                 ],
-                "summary": "Удалить песню",
+                "summary": "Изменить данные песни",
                 "parameters": [
                     {
                         "type": "integer",
@@ -208,11 +199,20 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Поля, которые могут быть изменены (отправьте только те поля, которые требуют изменений)",
+                        "name": "song",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSongRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Успешное удаление песни",
+                        "description": "Успешное обновление песни",
                         "schema": {
                             "$ref": "#/definitions/models.MessageResponse"
                         }
@@ -316,47 +316,10 @@ const docTemplate = `{
                 }
             }
         },
-        "models.Group": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "models.MessageResponse": {
             "type": "object",
             "properties": {
                 "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.Song": {
-            "type": "object",
-            "properties": {
-                "group": {
-                    "$ref": "#/definitions/models.Group"
-                },
-                "groupID": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "link": {
-                    "type": "string"
-                },
-                "releaseDate": {
-                    "type": "string"
-                },
-                "song": {
-                    "type": "string"
-                },
-                "text": {
                     "type": "string"
                 }
             }
@@ -388,24 +351,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "group": {
-                    "type": "string",
-                    "example": ""
+                    "type": "string"
                 },
                 "link": {
-                    "type": "string",
-                    "example": ""
+                    "type": "string"
                 },
                 "releaseDate": {
                     "type": "string",
-                    "example": ""
+                    "example": "0001-01-01"
                 },
                 "song": {
-                    "type": "string",
-                    "example": ""
+                    "type": "string"
                 },
                 "text": {
-                    "type": "string",
-                    "example": ""
+                    "type": "string"
                 }
             }
         }

@@ -31,7 +31,7 @@ func main() {
 	r.HandleFunc("/songs", api.GetFilteredSongs).Methods("GET")
 	r.HandleFunc("/songs/{id}/text", api.GetSongText).Methods("GET")
 	r.HandleFunc("/songs/{id}", api.DeleteSong).Methods("DELETE")
-	r.HandleFunc("/songs/{id}", api.UpdateSong).Methods("PUT")
+	r.HandleFunc("/songs/{id}", api.UpdateSong).Methods("PATCH")
 	r.HandleFunc("/songs", api.CreateSong).Methods("POST")
 
 	logrus.Info("Маршруты API настроены")
